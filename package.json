@@ -2,12 +2,17 @@
   "name": "@job-project/source",
   "version": "0.0.0",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {},
   "private": true,
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@prisma/client": "^6.16.1",
     "axios": "^1.6.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0"
@@ -37,6 +42,7 @@
     "jest-util": "^30.0.2",
     "nx": "21.5.2",
     "prettier": "^2.6.2",
+    "prisma": "^6.16.1",
     "ts-jest": "^29.4.0",
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
