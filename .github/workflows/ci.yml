@@ -1,29 +1,74 @@
 name: CI
 
+# Kích hoạt pipeline khi push hoặc pull request
 on:
   push:
     branches:
       - main
   pull_request:
+  workflow_dispatch: # Cho phép chạy thủ công
 
+# Quyền hạn tối thiểu
 permissions:
   actions: read
   contents: read
+  checks: write # Cần thiết để báo cáo kết quả kiểm tra
 
 jobs:
-  main:
+  ci:
+    name: Lint, Test, Build (Affected)
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # Giới hạn thời gian chạy job
+
+    strategy:
+      matrix:
+        node-version: [20, 24] # Giảm số phiên bản để tăng tốc, chỉ giữ các phiên bản phổ biến
+      fail-fast: false # Tiếp tục chạy các job khác nếu một job thất bại
+
     steps:
-      - uses: actions/checkout@v4
+      # Checkout code với lịch sử đầy đủ cho Nx affected
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          filter: tree:0
-          fetch-depth: 0
+          fetch-depth: 0 # Lấy toàn bộ lịch sử commit để Nx affected hoạt động
 
-      # Cache node_modules
-      - uses: actions/setup-node@v4
+      # Thiết lập Node.js và cache dependencies
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
-      - run: npm ci --legacy-peer-deps
-      - run: npx nx run-many -t lint test build
+      # Cài đặt dependencies
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        env:
+          NODE_ENV: development
+
+      # Cache Nx để tăng tốc
+      - name: Cache Nx
+        uses: actions/cache@v4
+        with:
+          path: |
+            .nx/cache
+            node_modules/.cache
+          key: nx-cache-${{ runner.os }}-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            nx-cache-${{ runner.os }}-${{ matrix.node-version }}-
+
+      # Chạy lint, test, build chỉ cho các dự án bị ảnh hưởng
+      - name: Run lint, test, and build (affected)
+        run: npx nx affected --targets=lint,test,build --parallel=2 --base=origin/main --head=HEAD
+        env:
+          CI: true
+
+      # Lưu trữ kết quả test
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: |
+            **/test-results/**
+            **/coverage/**
