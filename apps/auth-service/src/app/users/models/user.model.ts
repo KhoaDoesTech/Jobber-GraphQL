@@ -6,6 +6,6 @@ export class User extends AbstractModel {
   @Field()
   email: string
 
-  @Field()
-  name: string
+  @Field({ nullable: true })
+  name?: string
 }
